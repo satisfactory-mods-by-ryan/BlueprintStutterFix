@@ -1,0 +1,34 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "Blueprint Stutter Fix",
+	"Description": "Reduces stutter caused by having a lot of blueprints saved in your library.",
+	"Category": "Modding",
+	"CreatedBy": "Ryan",
+	"CreatedByURL": "https://ficsit.app/user/6CFnDcDHq3Cwf7",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "https://docs.google.com/forms/d/e/1FAIpQLSeF71GZIfPfStLGFsYLMf45TdzNcc8bav4sOqB8uHf9UqiJUg/viewform?usp=pp_url&entry.848154145=Blueprint+Stutter+Fix",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "BlueprintStutterFix",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "SML",
+			"Enabled": true,
+			"SemVersion": "^3.11.3"
+		}
+	],
+	"SemVersion": "1.0.0",
+	"GameVersion": ">=455399",
+	"RequiredOnRemote": false
+}
