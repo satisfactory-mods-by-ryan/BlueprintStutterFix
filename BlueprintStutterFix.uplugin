@@ -3,7 +3,7 @@
 	"Version": 1,
 	"VersionName": "1.0.0",
 	"FriendlyName": "Blueprint Stutter Fix",
-	"Description": "Reduces stutter caused by having a lot of blueprints saved in your library.",
+	"Description": "Reduces stutter caused by having a lot of blueprints saved in your library",
 	"Category": "Modding",
 	"CreatedBy": "Ryan",
 	"CreatedByURL": "https://ficsit.app/user/6CFnDcDHq3Cwf7",
