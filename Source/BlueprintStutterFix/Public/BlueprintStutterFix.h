@@ -10,5 +10,5 @@ public:
 private:
     int32 refreshCallCount = 0;
 
-    void RefreshBlueprintRecipeRequirements();
+    void RefreshBlueprintRecipeRequirements(UWorld* world);
 };
