@@ -30,7 +30,7 @@ public class BlueprintStutterFix : ModuleRules
 			//"ReplicationGraph",
 			// "AIModule",
 			// "GameplayTasks",
-			// "SlateCore", "Slate", "UMG",
+			"SlateCore", "Slate", "UMG",
 			//"InstancedSplines",
 			// "RenderCore",
 			// "CinematicCamera",

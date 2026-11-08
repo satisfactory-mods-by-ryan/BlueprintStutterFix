@@ -1,5 +1,6 @@
 #include "BlueprintStutterFix.h"
 
+#include "BSFFunctionInterceptor.h"
 #include "FGBlueprintSubsystem.h"
 #include "FGSchematicManager.h"
 
@@ -25,7 +26,13 @@ void FBlueprintStutterFixModule::StartupModule() {
 		this->RefreshBlueprintRecipeRequirements(self->GetWorld());
 	});
 
+	FBSFFunctionInterceptor::Get().Startup();
+
 #endif
+}
+
+void FBlueprintStutterFixModule::ShutdownModule() {
+	FBSFFunctionInterceptor::Get().Shutdown();
 }
 
 void FBlueprintStutterFixModule::RefreshBlueprintRecipeRequirements(UWorld* world) {
