@@ -24,22 +24,33 @@ namespace {
 
 	TAutoConsoleVariable<float> CVarSearchDebounceMs(
 		TEXT("BSF.SearchDebounceMs"), 300.0f,
-		TEXT("Build menu search: typing pause in milliseconds before a slow search runs. 0 disables."),
+		TEXT("Build menu search: typing pause in milliseconds before a slow search runs. A search counts as slow if the last one on that widget took at least this long. 0 disables."),
 		ECVF_Default
 	);
 
-	// Small libraries search fast, and delaying those searches would only add input lag
-	TAutoConsoleVariable<float> CVarSearchDebounceMinCostMs(
-		TEXT("BSF.SearchDebounceMinCostMs"), 50.0f,
-		TEXT("Build menu search: only delay a search if the last one on that widget took at least this many milliseconds."),
-		ECVF_Default
-	);
+	// The handlers a blueprint menu binds on the blueprint buttons. The buttons end up with the menu of a closed
+	// blueprinter bound as well, so these run on a menu nobody is using.
+	const TCHAR* const buttonHandlerNames[] = {
+		TEXT("OnBlueprintButtonClicked"),
+		TEXT("OnBlueprintSettingClicked"),
+		TEXT("OnBlueprintHovered"),
+		TEXT("OnBlueprintUnhovered"),
+		TEXT("OnBlueprintDragBegin"),
+		TEXT("OnBlueprintControllerDragBegin"),
+		TEXT("OnSelect"),
+		TEXT("OnSelectToggle"),
+		TEXT("OnClearSelection"),
+		TEXT("OnObjectMoved"),
+	};
 
-	TAutoConsoleVariable<int32> CVarLazyDirectoryMenu(
-		TEXT("BSF.LazyDirectoryMenu"), 1,
-		TEXT("Cog edit popup: 1 = build the directory selector's blueprint list only when it is used or shown. 0 disables."),
-		ECVF_Default
-	);
+	bool IsButtonHandlerName(const FString& functionName) {
+		for (const TCHAR* name : buttonHandlerNames) {
+			if (functionName == name) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	// What every Blueprint function pointed to before wrapping, used for calls we can't identify
 	FNativeFuncPtr defaultOriginal = nullptr;
@@ -120,6 +131,8 @@ void FBSFFunctionInterceptor::InstallWrappers() {
 			intercepted.isSearchCommitted = functionName.EndsWith(searchCommittedSuffix);
 			intercepted.isConstruct = isBlueprintMenu && functionName == TEXT("Construct");
 			intercepted.isInputDeviceChanged = isBlueprintMenu && functionName == TEXT("OnInputDeviceTypeChanged");
+			// Only plain events, a call can only be dropped when it carries no result
+			intercepted.isButtonHandler = isBlueprintMenu && IsButtonHandlerName(functionName) && !function->HasAnyFunctionFlags(FUNC_HasOutParms) && function->ReturnValueOffset == MAX_uint16;
 			if (!intercepted.isBlueprintMenuFunction && !intercepted.isSearchChanged && !intercepted.isSearchCommitted) {
 				continue;
 			}
@@ -151,15 +164,22 @@ void FBSFFunctionInterceptor::Wrapper(UObject* context, FFrame& stack, void* con
 	}
 	const FInterceptedFunction intercepted = *found;
 
+	// A call that came from native code, the button's dispatcher, has its parameters in the frame, so dropping it leaves
+	// nothing unread. A call from Blueprint script would, so it is let through.
+	if (intercepted.isButtonHandler && context && !self.replaying && stack.Node == function) {
+		UWidget* menu = Cast<UWidget>(context);
+		if (menu && !IsShown(menu)) {
+			return;
+		}
+	}
+
 	if (!self.replaying && context) {
-		if ((intercepted.isConstruct || intercepted.isInputDeviceChanged) && CVarLazyDirectoryMenu.GetValueOnGameThread() != 0
-			&& self.TryDeferLazyCall(context, function, stack, intercepted.isConstruct)) {
+		if ((intercepted.isConstruct || intercepted.isInputDeviceChanged) && self.TryDeferLazyCall(context, function, stack, intercepted.isConstruct)) {
 			return;
 		}
 
 		// Params are only copied for plain events, which is all the search box sends
-		if (intercepted.isSearchChanged && stack.Locals && !function->HasAnyFunctionFlags(FUNC_HasOutParms) && function->ReturnValueOffset == MAX_uint16
-			&& CVarSearchDebounceMs.GetValueOnGameThread() > 0.0f && self.ShouldDeferSearch(context, function)) {
+		if (intercepted.isSearchChanged && stack.Locals && !function->HasAnyFunctionFlags(FUNC_HasOutParms) && function->ReturnValueOffset == MAX_uint16 && CVarSearchDebounceMs.GetValueOnGameThread() > 0.0f && self.ShouldDeferSearch(context, function)) {
 			self.DeferSearch(context, function, stack);
 			return;
 		}
@@ -256,9 +276,10 @@ bool FBSFFunctionInterceptor::ShouldDeferSearch(UObject* context, UFunction* fun
 	if (FindPendingSearch(context, function)) {
 		return true;
 	}
-	// A widget we haven't timed yet counts as slow, otherwise the first (often broadest) search would never be delayed
+	// A widget we haven't timed yet counts as slow, otherwise the first, often broadest, search would never be delayed
 	const FSearchCost* cost = FindSearchCost(context, function);
-	return !cost || cost->costMs >= CVarSearchDebounceMinCostMs.GetValueOnGameThread();
+	// Small libraries search fast, and delaying those searches would only add input lag
+	return !cost || cost->costMs >= CVarSearchDebounceMs.GetValueOnGameThread();
 }
 
 void FBSFFunctionInterceptor::DeferSearch(UObject* context, UFunction* function, FFrame& stack) {

@@ -6,11 +6,11 @@
 #include "UObject/Stack.h"
 
 // With a big blueprint library two widgets in the build menu do far too much work:
-//  - the search boxes rebuild the whole result list on every keystroke (about 1 ms per result)
+//  - the search boxes rebuild the whole result list on every keystroke, about 1 ms per result
 //  - the cog edit popup builds the full blueprint list twice, once for the selector and once for the directory selector
-// Both are Blueprint script, so they are fixed by intercepting a few Blueprint functions and running them later (or
-// not until needed). This is done on the UFunction instead of with SML hooks so no hook assets are needed and the
-// original function can be run again afterwards.
+// Both are Blueprint script, so they are fixed by intercepting a few Blueprint functions and running them later, or not until needed.
+// The same interception stops the menu of a closed blueprinter from reacting to build menu clicks. This is done on the UFunction instead
+// of with SML hooks so no hook assets are needed and the original function can be run again afterwards.
 
 // Interception swaps UFunction::Func, which every Blueprint call goes through. Only script functions are safe to wrap:
 // native functions called through EX_CallMath skip UFunction::Invoke, so the wrapper could not tell which one it was.
@@ -33,6 +33,9 @@ private:
 		bool isSearchCommitted = false;
 		bool isConstruct = false;
 		bool isInputDeviceChanged = false;
+
+		// A blueprint button event, ignored while the menu isn't on screen
+		bool isButtonHandler = false;
 	};
 
 	// The parameters of an intercepted call, so it can be run again with ProcessEvent
